@@ -6,6 +6,12 @@ import sampleQuotes from "@/components/sampleQuotes";
 import { computeWPM, getRandomQuote } from "@/lib/utils";
 import Settings from "./components/Settings";
 import { Button } from "./components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./components/ui/dialog";
 
 const DEFAULT_DURATION = 30;
 
@@ -32,6 +38,7 @@ function App() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   // On mount, pick a random quote and reset everything
   useEffect(() => {
@@ -52,6 +59,46 @@ function App() {
 
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K or Ctrl+K to toggle settings
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSettings(prev => !prev);
+        return;
+      }
+
+      // Escape to close settings or stop test
+      if (e.key === 'Escape') {
+        if (showSettings) {
+          setShowSettings(false);
+          inputRef.current?.focus();
+        } else if (isTestActive) {
+          stopTest();
+        }
+        return;
+      }
+
+      // Cmd+R or Ctrl+R to restart
+      if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+        e.preventDefault();
+        handleRestart();
+        return;
+      }
+
+      // Cmd+S or Ctrl+S to stop test
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && isTestActive) {
+        e.preventDefault();
+        stopTest();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings, isTestActive]);
 
   // Timer logic
   useEffect(() => {
@@ -83,8 +130,8 @@ function App() {
   }, [isTestActive, timeLeft]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value; // what the user just tried to type
-    const prev = userInput; // what’s currently in state
+    const raw = e.target.value;
+    const prev = userInput;
 
     if (!isTestActive && !isTestComplete) {
       setIsTestActive(true);
@@ -92,22 +139,20 @@ function App() {
     if (isTestComplete) return;
 
     if (mode === "strict") {
-      // 1) If user backspaces, allow it to correct errors
+      // Allow backspace
       if (raw.length < prev.length) {
         setUserInput(raw);
         setIsError(false);
         return;
       }
 
-      // 2) Only allow one new character at a time in strict mode
+      // Only allow one new character at a time in strict mode
       if (raw.length === prev.length + 1) {
         const newChar = raw.charAt(raw.length - 1);
         const expected = quote.charAt(prev.length);
 
-        // Count this keystroke
         setTotalTyped((t) => t + 1);
 
-        // If it matches, advance and clear error
         if (newChar === expected) {
           setCorrectTyped((c) => c + 1);
           setIsError(false);
@@ -128,12 +173,10 @@ function App() {
         }
       }
 
-      // If user tries to paste or add more than one char at once, ignore it
       return;
     }
 
-    // ─── Normal mode ───
-    // If they added exactly one character:
+    // Normal mode
     if (raw.length === prev.length + 1) {
       const newChar = raw.charAt(raw.length - 1);
       const expected = quote.charAt(prev.length);
@@ -201,15 +244,30 @@ function App() {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-4/5 text-center space-y-6">
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2">
-          <Settings
-            duration={duration}
-            handleDurationChange={handleDurationChange}
-            mode={mode}
-            setMode={setMode}
-            isTestActive={isTestActive}
-          />
+        <div className="fixed top-4 right-4">
+          <Button
+            onClick={() => setShowSettings(!showSettings)}
+            variant="outline"
+            size="sm"
+          >
+            Settings (⌘K)
+          </Button>
         </div>
+
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogContent onCloseAutoFocus={() => inputRef.current?.focus()}>
+            <DialogHeader>
+              <DialogTitle>Settings</DialogTitle>
+            </DialogHeader>
+            <Settings
+              duration={duration}
+              handleDurationChange={handleDurationChange}
+              mode={mode}
+              setMode={setMode}
+              isTestActive={isTestActive}
+            />
+          </DialogContent>
+        </Dialog>
 
         {(isTestActive || isTestComplete) && (
           <div className="text-2xl font-bold text-gray-700">
@@ -255,7 +313,11 @@ function App() {
           </div>
         )}
 
-        {isTestActive && <Button onClick={stopTest}>Stop</Button>}
+        {isTestActive && (
+          <Button onClick={stopTest} variant="outline">
+            Stop (Esc or ⌘S)
+          </Button>
+        )}
       </div>
     </div>
   );

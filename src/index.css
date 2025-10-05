@@ -118,3 +118,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes scale-in {
+  0% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}

@@ -20,5 +20,18 @@ export function computeAccuracy(quote: string, userInput: string): number {
 }
 
 export function getRandomQuote(quotes: string[]): string {
-  return quotes[Math.floor(Math.random() * quotes.length)];
+  // Get 5-10 random sentences for a longer test
+  const numSentences = Math.floor(Math.random() * 6) + 5; // 5 to 10
+  const selectedQuotes: string[] = [];
+  const usedIndices = new Set<number>();
+
+  while (selectedQuotes.length < numSentences && selectedQuotes.length < quotes.length) {
+    const randomIndex = Math.floor(Math.random() * quotes.length);
+    if (!usedIndices.has(randomIndex)) {
+      usedIndices.add(randomIndex);
+      selectedQuotes.push(quotes[randomIndex]);
+    }
+  }
+
+  return selectedQuotes.join(' ');
 }
